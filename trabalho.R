@@ -41,3 +41,20 @@ cepagri <- cepagri[periodo, ]
 cepagri <- cepagri[cepagri$Sensacao != 99.90,]
 
 summary(cepagri)
+
+# Função que dado um vetor e um inteiro k verifica se cada posição do vetor é igual às k posições
+# anteriores ou posteriores
+consecutive <- function (vector , k = 1) {
+  n <- length ( vector )
+  result <- logical (n)
+  for (i in (1+k):n)
+    if (all( vector [(i-k):(i-1)] == vector [i]))
+      result [i] <- TRUE
+  for (i in 1:(n-k))
+    if (all( vector [(i+1):(i+k)] == vector [i]))
+      result [i] <- TRUE
+  return ( result )
+}
+
+
+
