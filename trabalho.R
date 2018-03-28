@@ -53,5 +53,13 @@ consecutive <- function (vector , k = 1) {
   return ( result )
 }
 
+# Remover as amostras que se repetem em 24 horas
+sum(consecutive(cepagri$Temperatura,144))
 
+periodo = 144
+cepagri <- cepagri[!(consecutive(cepagri$Temperatura, periodo) &  
+      consecutive(cepagri$Vento, periodo) &
+      consecutive(cepagri$Umidade, periodo) &
+      consecutive(cepagri$Sensacao, periodo)),]
 
+#confirmar se ha horarios duplicados
