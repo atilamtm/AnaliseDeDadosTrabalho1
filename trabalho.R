@@ -10,17 +10,11 @@ con <- url("https://www.ic.unicamp.br/~zanoni/cepagri/cepagri.csv")
 # Criando um vetor para indexar os nomes das columas
 names <- c("Horario", "Temperatura", "Vento", "Umidade", "Sensacao")
 
-#cepagri <- read.csv(con , header = FALSE , sep = ";", col.names = names )
-
 # Ir?? ler a tabela e preencher os campos faltando
 cepagri <- read.table(con , header = FALSE , fill = TRUE, sep = ";", col.names = names, 
                       colClasses = c("character","character","numeric","numeric","numeric"),
                       stringsAsFactors=FALSE)
-#26673 tem erros
-#26491 s?? tem data
-
-pDataExcluded <- nrow(cepagri)
-cepagriOriginal <- cepagri
+# 210336 amostras no conjunto de dados original
 
 # Converte a coluna 2 para numeric, onde tiver a string "ERRO", ira'transformar pra NA
 cepagri [ , 2] <- as.numeric(cepagri [ ,2])
@@ -29,6 +23,7 @@ cepagri [ , 2] <- as.numeric(cepagri [ ,2])
 for(i in 1:5) {
   cepagri <- cepagri [!is.na(cepagri[ , i]), ]
 }
+# 208183 amostras sobraram - 2153 amostras removidas
 
 # Converte a string com horarios para POSIXlt
 cepagri$Horario <- strptime (cepagri$Horario, "%d/%m/%Y-%H:%M")
@@ -36,8 +31,10 @@ cepagri$Horario <- strptime (cepagri$Horario, "%d/%m/%Y-%H:%M")
 # Escolhe apneas as amostras entre o periodo desejado: 01/01/2015-31/12/2017
 periodo <- cepagri$Horario >= "2015-01-01" & cepagri$Horario < "2018-01-01"
 cepagri <- cepagri[periodo, ]
+# 154257 amostras dentro do periodo desejado de 3 anos
+# 3 anos * 365 dias + 1 dia de ano bissexto 2016 * 24 horas * 6 coletas por hora = 157824 amostras
 
-# Remove os outliers
+# Remove os outliers - 137 valores de Sensacao = 99.90, total de amostra = 154120
 cepagri <- cepagri[cepagri$Sensacao != 99.90,]
 
 summary(cepagri)
