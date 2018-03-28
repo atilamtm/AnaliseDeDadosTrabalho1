@@ -36,3 +36,8 @@ cepagri$Horario <- strptime (cepagri$Horario, "%d/%m/%Y-%H:%M")
 # Escolhe apneas as amostras entre o periodo desejado: 01/01/2015-31/12/2017
 periodo <- cepagri$Horario >= "2015-01-01" & cepagri$Horario < "2018-01-01"
 cepagri <- cepagri[periodo, ]
+
+# Remove os outliers
+cepagri <- cepagri[cepagri$Sensacao != 99.90,]
+
+summary(cepagri)
