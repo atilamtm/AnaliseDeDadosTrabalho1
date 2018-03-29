@@ -12,9 +12,9 @@ names <- c("Horario", "Temperatura", "Vento", "Umidade", "Sensacao")
 
 # Ir?? ler a tabela e preencher os campos faltando
 cepagri <- read.table(con , header = FALSE , fill = TRUE, sep = ";", col.names = names, 
-                      colClasses = c("character","character","numeric","numeric","numeric"),
+                      #colClasses = c("character","character","numeric","numeric","numeric"),
                       stringsAsFactors=FALSE)
-# 210336 amostras no conjunto de dados original
+# 210475 amostras no conjunto de dados original
 
 # Converte a coluna 2 para numeric, onde tiver a string "ERRO", ira'transformar pra NA
 cepagri [ , 2] <- as.numeric(cepagri [ ,2])
@@ -23,7 +23,7 @@ cepagri [ , 2] <- as.numeric(cepagri [ ,2])
 for(i in 1:5) {
   cepagri <- cepagri [!is.na(cepagri[ , i]), ]
 }
-# 208183 amostras sobraram - 2153 amostras removidas
+# 208320 amostras sobraram - 2155 amostras removidas
 
 # Converte a string com horarios para POSIXlt
 cepagri$Horario <- strptime (cepagri$Horario, "%d/%m/%Y-%H:%M")
@@ -53,13 +53,24 @@ consecutive <- function (vector , k = 1) {
   return ( result )
 }
 
-# Remover as amostras que se repetem em 24 horas
-sum(consecutive(cepagri$Temperatura,144))
+# Numero de dados relacionadas a 1h, 2h, 4h, 6h, 12h, 24h, 36h e 48h
+nTimes = c(6, 12, 24, 36, 72, 144, 216, 288);
+vRepeatedValues = rep(x=0, times=length(nTimes))
+vFailDate = list();
+for(i in 1:length(nTimes)) {
+  repeated = 
+    consecutive(cepagri$Temperatura, nTimes[i]) & 
+    consecutive(cepagri$Vento, nTimes[i]) & 
+    consecutive(cepagri$Umidade, nTimes[i]) & 
+    consecutive(cepagri$Sensacao, nTimes[i])
+  
+  vRepeatedValues[i] = sum (repeated)
+  vFailDate <- c(vFailDate, repeated)
+}
 
-periodo = 144
-cepagri <- cepagri[!(consecutive(cepagri$Temperatura, periodo) &  
-      consecutive(cepagri$Vento, periodo) &
-      consecutive(cepagri$Umidade, periodo) &
-      consecutive(cepagri$Sensacao, periodo)),]
+dfRepeticoes <-data.frame(vRepeatedValues=vRepeatedValues, nHoras=nTimes/6, porcentagem=(vRepeatedValues/length(cepagri$Horario)) * 100)
+names(dfRepeticoes) <- c("Número de repetições consecutivas", "Periodo de tempo (Horas)", "Porcetagem")
 
-#confirmar se ha horarios duplicados
+dfRepeticoes
+# Não houveram falhas que perduraram 48hs
+
