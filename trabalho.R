@@ -86,7 +86,79 @@ cepagri <- cepagri[!(consecutive(cepagri$Temperatura, 144) &
                        consecutive(cepagri$Sensacao, 144)),]
 
 
-#########   Analise 2 - estacoes do ano ############
+#########   Analise 1 - previsão do tempo simplista ############
+
+calculaIntervaloMinMax <- function(dfMax, dfMin, ndias) {
+  dfaux <- data.frame(Data = dfMax$Data, 
+                      minNTemp = rep(NA,length(dfMin$Data)),
+                      maxNTemp = rep(NA,length(dfMax$Data)), 
+                      minNUmid = rep(NA,length(dfMin$Data)),
+                      maxNUmid = rep(NA,length(dfMax$Data)), 
+                      minNVent = rep(NA,length(dfMin$Data)),
+                      maxNVent = rep(NA,length(dfMax$Data)), 
+                      minNSens = rep(NA,length(dfMin$Data)),
+                      maxNSens = rep(NA,length(dfMax$Data)), 
+                      stringsAsFactors = FALSE)
+  
+  for (i in (ndias+1):length(dfMax$Data)) {
+    dataNDiaAnterior <- as.Date(dfMax[i,]$Data) - ndias
+    ontem <- as.Date(dfMax[i,]$Data) - 1
+    nUltimosDiasMax <- dfMax[(dfMax$Data >= dataNDiaAnterior & dfMax$Data <= ontem),]
+    nUltimosDiasMin <- dfMin[(dfMin$Data >= dataNDiaAnterior & dfMin$Data <= ontem),]
+    if (length(nUltimosDiasMax$Temperatura) > 0) {
+      dfaux[i,]$minNTemp <- min(nUltimosDiasMin$Temperatura)
+      dfaux[i,]$maxNTemp <- max(nUltimosDiasMax$Temperatura)
+      dfaux[i,]$minNUmid <- min(nUltimosDiasMin$Umidade)
+      dfaux[i,]$maxNUmid <- max(nUltimosDiasMax$Umidade)
+      dfaux[i,]$minNVent <- min(nUltimosDiasMin$Vento)
+      dfaux[i,]$maxNVent <- max(nUltimosDiasMax$Vento)
+      dfaux[i,]$minNSens <- min(nUltimosDiasMin$Sensacao)
+      dfaux[i,]$maxNSens <- max(nUltimosDiasMax$Sensacao)
+    }
+  }
+  return(dfaux)
+}
+
+compara <- function(diasMin,diasMax, previsao) {
+  result <- c(Acertos = 0,
+              Erros = 0,
+              NAs = 0)
+  for(i in 1:length(diasMax$Data)) {
+    if (is.na(previsao[i,]$maxNTemp)) {
+      result["NAs"] <- result["NAs"] + 1
+    } else {
+      if (diasMax[i,]$Temperatura <= previsao[i,]$maxNTemp & 
+          diasMin[i,]$Temperatura >= previsao[i,]$minNTemp) {
+        result["Acertos"] <- result["Acertos"] + 1
+      } else {
+        result["Erros"] <- result["Erros"] + 1
+      }
+    }
+  }
+  return(result)
+}
+
+# Calcular as medições máxima e mínima diárias
+maxPorDia <- aggregate(cepagri[,2:5],list(format(cepagri$Horario, "%Y-%m-%d")), max)
+minPorDia <- aggregate(cepagri[,2:5],list(format(cepagri$Horario, "%Y-%m-%d")), min)
+colnames(maxPorDia) <- c("Data", "Temperatura", "Vento", "Umidade", "Sensacao")
+colnames(minPorDia) <- c("Data", "Temperatura", "Vento", "Umidade", "Sensacao")
+
+df3 <- calculaIntervaloMinMax(dfMax = maxPorDia, dfMin = minPorDia, ndias = 3)
+df5 <- calculaIntervaloMinMax(dfMax = maxPorDia, dfMin = minPorDia, ndias = 5)
+df7 <- calculaIntervaloMinMax(dfMax = maxPorDia, dfMin = minPorDia, ndias = 7)
+df14 <- calculaIntervaloMinMax(dfMax = maxPorDia, dfMin = minPorDia, ndias = 7)
+
+
+previsao3 <- compara(diasMin = minPorDia, diasMax = maxPorDia, previsao = df3)
+previsao5 <- compara(diasMin = minPorDia, diasMax = maxPorDia, previsao = df5)
+previsao7 <- compara(diasMin = minPorDia, diasMax = maxPorDia, previsao = df7)
+previsao14 <- compara(diasMin = minPorDia, diasMax = maxPorDia, previsao = df14)
+
+
+
+
+#########   Analise 2 - estações do ano ############
 
 # Calcula a média das medições realizadas ao longo dos 3 anos, agrupadas por cada dia de cada mês
 mediaPorDia <- aggregate(cepagri[,2:5],list(format(cepagri$Horario, "%m-%d")), mean)
