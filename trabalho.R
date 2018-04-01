@@ -119,19 +119,45 @@ calculaIntervaloMinMax <- function(dfMax, dfMin, ndias) {
   return(dfaux)
 }
 
-compara <- function(diasMin,diasMax, previsao) {
-  result <- c(Acertos = 0,
-              Erros = 0,
-              NAs = 0)
-  for(i in 1:length(diasMax$Data)) {
+compara2 <- function(dfMin,dfMax, previsao) {
+  result <- data.frame(Data = dfMin$Data, 
+                       Na = rep(FALSE,length(dfMin$Data)),
+                       tempAcerto = rep(FALSE,length(dfMin$Data)),
+                       tempErro = rep(FALSE,length(dfMin$Data)),
+                       umidAcerto = rep(FALSE,length(dfMin$Data)),
+                       umidErro = rep(FALSE,length(dfMin$Data)),
+                       ventAcerto = rep(FALSE,length(dfMin$Data)),
+                       ventErro = rep(FALSE,length(dfMin$Data)),
+                       sensAcerto = rep(FALSE,length(dfMin$Data)),
+                       sensErro = rep(FALSE,length(dfMin$Data)))
+  
+  for(i in 1:length(dfMin$Data)) {
     if (is.na(previsao[i,]$maxNTemp)) {
-      result["NAs"] <- result["NAs"] + 1
+      result[i,]$Na <- TRUE
     } else {
-      if (diasMax[i,]$Temperatura <= previsao[i,]$maxNTemp & 
-          diasMin[i,]$Temperatura >= previsao[i,]$minNTemp) {
-        result["Acertos"] <- result["Acertos"] + 1
+      if (dfMax[i,]$Temperatura <= previsao[i,]$maxNTemp & 
+          dfMin[i,]$Temperatura >= previsao[i,]$minNTemp) {
+        result[i,]$tempAcerto <- TRUE
       } else {
-        result["Erros"] <- result["Erros"] + 1
+        result[i,]$tempErro <- TRUE
+      }
+      if (dfMax[i,]$Umidade <= previsao[i,]$maxNUmid & 
+          dfMin[i,]$Umidade >= previsao[i,]$minNUmid) {
+        result[i,]$umidAcerto <- TRUE
+      } else {
+        result[i,]$umidErro <- TRUE
+      }
+      if (dfMax[i,]$Vento <= previsao[i,]$maxNVent & 
+          dfMin[i,]$Vento >= previsao[i,]$minNVent) {
+        result[i,]$ventAcerto <- TRUE
+      } else {
+        result[i,]$ventErro <- TRUE
+      }
+      if (dfMax[i,]$Sensacao <= previsao[i,]$maxNSens & 
+          dfMin[i,]$Sensacao >= previsao[i,]$minNSens) {
+        result[i,]$sensAcerto <- TRUE
+      } else {
+        result[i,]$sensErro <- TRUE
       }
     }
   }
@@ -144,19 +170,209 @@ minPorDia <- aggregate(cepagri[,2:5],list(format(cepagri$Horario, "%Y-%m-%d")), 
 colnames(maxPorDia) <- c("Data", "Temperatura", "Vento", "Umidade", "Sensacao")
 colnames(minPorDia) <- c("Data", "Temperatura", "Vento", "Umidade", "Sensacao")
 
+df1 <- calculaIntervaloMinMax(dfMax = maxPorDia, dfMin = minPorDia, ndias = 1)
 df3 <- calculaIntervaloMinMax(dfMax = maxPorDia, dfMin = minPorDia, ndias = 3)
 df5 <- calculaIntervaloMinMax(dfMax = maxPorDia, dfMin = minPorDia, ndias = 5)
 df7 <- calculaIntervaloMinMax(dfMax = maxPorDia, dfMin = minPorDia, ndias = 7)
-df14 <- calculaIntervaloMinMax(dfMax = maxPorDia, dfMin = minPorDia, ndias = 7)
+df14 <- calculaIntervaloMinMax(dfMax = maxPorDia, dfMin = minPorDia, ndias = 14)
+df15 <- calculaIntervaloMinMax(dfMax = maxPorDia, dfMin = minPorDia, ndias = 15)
+df30 <- calculaIntervaloMinMax(dfMax = maxPorDia, dfMin = minPorDia, ndias = 30)
+
+resultado1 <- compara2(dfMin = minPorDia, dfMax = maxPorDia, previsao = df1)
+resultado3 <- compara2(dfMin = minPorDia, dfMax = maxPorDia, previsao = df3)
+resultado5 <- compara2(dfMin = minPorDia, dfMax = maxPorDia, previsao = df5)
+resultado7 <- compara2(dfMin = minPorDia, dfMax = maxPorDia, previsao = df7)
+resultado14 <- compara2(dfMin = minPorDia, dfMax = maxPorDia, previsao = df14)
+resultado15 <- compara2(dfMin = minPorDia, dfMax = maxPorDia, previsao = df15)
+resultado30 <- compara2(dfMin = minPorDia, dfMax = maxPorDia, previsao = df30)
+
+# Cada linha da tabela representa a quantidade de Acertos, Erros e NAs em cada tipo de previsão
+# A previsões são: 1 dias, 3 dias, 5 dias, 1 semana, 15 dias, 1 mes
+Acertos <- c(sum(resultado1$tempAcerto), 
+             sum(resultado3$tempAcerto), 
+             sum(resultado5$tempAcerto), 
+             sum(resultado7$tempAcerto), 
+             sum(resultado15$tempAcerto), 
+             sum(resultado30$tempAcerto),
+             sum(resultado1$umidAcerto), 
+             sum(resultado3$umidAcerto), 
+             sum(resultado5$umidAcerto), 
+             sum(resultado7$umidAcerto), 
+             sum(resultado15$umidAcerto), 
+             sum(resultado30$umidAcerto),
+             sum(resultado1$ventAcerto), 
+             sum(resultado3$ventAcerto), 
+             sum(resultado5$ventAcerto), 
+             sum(resultado7$ventAcerto), 
+             sum(resultado15$ventAcerto), 
+             sum(resultado30$ventAcerto),
+             sum(resultado1$sensAcerto), 
+             sum(resultado3$sensAcerto), 
+             sum(resultado5$sensAcerto), 
+             sum(resultado7$sensAcerto), 
+             sum(resultado15$sensAcerto), 
+             sum(resultado30$sensAcerto),
+             sum(resultado1$tempAcerto & resultado1$umidAcerto & resultado1$ventAcerto & resultado1$sensAcerto),
+             sum(resultado3$tempAcerto & resultado3$umidAcerto & resultado3$ventAcerto & resultado3$sensAcerto),
+             sum(resultado5$tempAcerto & resultado5$umidAcerto & resultado5$ventAcerto & resultado5$sensAcerto),
+             sum(resultado7$tempAcerto & resultado7$umidAcerto & resultado7$ventAcerto & resultado7$sensAcerto),
+             sum(resultado15$tempAcerto & resultado15$umidAcerto & resultado15$ventAcerto & resultado15$sensAcerto),
+             sum(resultado30$tempAcerto & resultado30$umidAcerto & resultado30$ventAcerto & resultado30$sensAcerto),
+             sum(resultado1$tempAcerto | resultado1$umidAcerto | resultado1$ventAcerto | resultado1$sensAcerto),
+             sum(resultado3$tempAcerto | resultado3$umidAcerto | resultado3$ventAcerto | resultado3$sensAcerto),
+             sum(resultado5$tempAcerto | resultado5$umidAcerto | resultado5$ventAcerto | resultado5$sensAcerto),
+             sum(resultado7$tempAcerto | resultado7$umidAcerto | resultado7$ventAcerto | resultado7$sensAcerto),
+             sum(resultado15$tempAcerto | resultado15$umidAcerto | resultado15$ventAcerto | resultado15$sensAcerto),
+             sum(resultado30$tempAcerto | resultado30$umidAcerto | resultado30$ventAcerto | resultado30$sensAcerto))
+
+Erros <- c(sum(resultado1$tempErro), 
+           sum(resultado3$tempErro), 
+           sum(resultado5$tempErro), 
+           sum(resultado7$tempErro), 
+           sum(resultado15$tempErro), 
+           sum(resultado30$tempErro),
+           sum(resultado1$umidErro), 
+           sum(resultado3$umidErro), 
+           sum(resultado5$umidErro), 
+           sum(resultado7$umidErro), 
+           sum(resultado15$umidErro), 
+           sum(resultado30$umidErro),
+           sum(resultado1$ventErro), 
+           sum(resultado3$ventErro), 
+           sum(resultado5$ventErro), 
+           sum(resultado7$ventErro), 
+           sum(resultado15$ventErro), 
+           sum(resultado30$ventErro),
+           sum(resultado1$sensErro), 
+           sum(resultado3$sensErro), 
+           sum(resultado5$sensErro), 
+           sum(resultado7$sensErro), 
+           sum(resultado15$sensErro), 
+           sum(resultado30$sensErro),
+           sum(resultado1$tempErro | resultado1$umidErro | resultado1$ventErro | resultado1$sensErro),
+           sum(resultado3$tempErro | resultado3$umidErro | resultado3$ventErro | resultado3$sensErro),
+           sum(resultado5$tempErro | resultado5$umidErro | resultado5$ventErro | resultado5$sensErro),
+           sum(resultado7$tempErro | resultado7$umidErro | resultado7$ventErro | resultado7$sensErro),
+           sum(resultado15$tempErro | resultado15$umidErro | resultado15$ventErro | resultado15$sensErro),
+           sum(resultado30$tempErro | resultado30$umidErro | resultado30$ventErro | resultado30$sensErro),
+           sum(resultado1$tempErro & resultado1$umidErro & resultado1$ventErro & resultado1$sensErro),
+           sum(resultado3$tempErro & resultado3$umidErro & resultado3$ventErro & resultado3$sensErro),
+           sum(resultado5$tempErro & resultado5$umidErro & resultado5$ventErro & resultado5$sensErro),
+           sum(resultado7$tempErro & resultado7$umidErro & resultado7$ventErro & resultado7$sensErro),
+           sum(resultado15$tempErro & resultado15$umidErro & resultado15$ventErro & resultado15$sensErro),
+           sum(resultado30$tempErro & resultado30$umidErro & resultado30$ventErro & resultado30$sensErro))
+
+Na <- rep(c(sum(resultado1$Na), 
+           sum(resultado3$Na), 
+           sum(resultado5$Na), 
+           sum(resultado7$Na), 
+           sum(resultado15$Na), 
+           sum(resultado30$Na)),
+           6)
+
+rotulos <- factor(c("Temperatura 1 dia", 
+                  "Temperatura 3 dias", 
+                  "Temperatura 5 dias", 
+                  "Temperatura 7 dias", 
+                  "Temperatura 15 dias", 
+                  "Temperatura 30 dias",
+                  "Umidade 1 dia", 
+                  "Umidade 3 dias", 
+                  "Umidade 5 dias", 
+                  "Umidade 7 dias", 
+                  "Umidade 15 dias", 
+                  "Umidade 30 dias",
+                  "Vento 1 dia", 
+                  "Vento 3 dias", 
+                  "Vento 5 dias", 
+                  "Vento 7 dias", 
+                  "Vento 15 dias", 
+                  "Vento 30 dias",
+                  "Sensacao 1 dia", 
+                  "Sensacao 3 dias", 
+                  "Sensacao 5 dias", 
+                  "Sensacao 7 dias", 
+                  "Sensacao 15 dias", 
+                  "Sensacao 30 dias",
+                  "Todas Medidas 1 dia",
+                  "Todas Medidas 3 dias",
+                  "Todas Medidas 5 dias",
+                  "Todas Medidas 7 dias",
+                  "Todas Medidas 15 dias",
+                  "Todas Medidas 30 dias",
+                  "Ao Menos uma med. 1 dia",
+                  "Ao Menos uma med. 3 dias",
+                  "Ao Menos uma med. 5 dias",
+                  "Ao Menos uma med. 7 dias",
+                  "Ao Menos uma med. 15 dias",
+                  "Ao Menos uma med. 30 dias"), 
+                  levels = c("Temperatura 1 dia", 
+                            "Temperatura 3 dias", 
+                            "Temperatura 5 dias", 
+                            "Temperatura 7 dias", 
+                            "Temperatura 15 dias", 
+                            "Temperatura 30 dias",
+                            "Umidade 1 dia", 
+                            "Umidade 3 dias", 
+                            "Umidade 5 dias", 
+                            "Umidade 7 dias", 
+                            "Umidade 15 dias", 
+                            "Umidade 30 dias",
+                            "Vento 1 dia", 
+                            "Vento 3 dias", 
+                            "Vento 5 dias", 
+                            "Vento 7 dias", 
+                            "Vento 15 dias", 
+                            "Vento 30 dias",
+                            "Sensacao 1 dia", 
+                            "Sensacao 3 dias", 
+                            "Sensacao 5 dias", 
+                            "Sensacao 7 dias", 
+                            "Sensacao 15 dias", 
+                            "Sensacao 30 dias",
+                            "Todas Medidas 1 dia",
+                            "Todas Medidas 3 dias",
+                            "Todas Medidas 5 dias",
+                            "Todas Medidas 7 dias",
+                            "Todas Medidas 15 dias",
+                            "Todas Medidas 30 dias",
+                            "Ao Menos uma med. 1 dia",
+                            "Ao Menos uma med. 3 dias",
+                            "Ao Menos uma med. 5 dias",
+                            "Ao Menos uma med. 7 dias",
+                            "Ao Menos uma med. 15 dias",
+                            "Ao Menos uma med. 30 dias"),
+                  ordered = TRUE)
+
+Previsoes = rep(rotulos,3)
+Resposta <- factor(c(rep("Acerto",36),rep("Erro",36),rep("NA",36)), 
+                   levels = c("NA", "Erro", "Acerto"), ordered = TRUE)
+Frequencia <- c(Acertos,Erros,Na)
 
 
-previsao3 <- compara(diasMin = minPorDia, diasMax = maxPorDia, previsao = df3)
-previsao5 <- compara(diasMin = minPorDia, diasMax = maxPorDia, previsao = df5)
-previsao7 <- compara(diasMin = minPorDia, diasMax = maxPorDia, previsao = df7)
-previsao14 <- compara(diasMin = minPorDia, diasMax = maxPorDia, previsao = df14)
+tabela <- data.frame(Previsoes,Resposta,Frequencia)
+g <- ggplot(tabela,aes(x=Previsoes,y=Frequencia,fill=Resposta))
+g <- g+ geom_bar(stat="identity")
+g <- g + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+g
 
 
+Total <- Acertos[1] + Erros[1] + Na[1]
+Porcentagem <- c(Acertos/Total,Erros/Total,Na/Total)
+Porcentagem <- trunc(Porcentagem * 10000)
+Porcentagem <- Porcentagem / 100
+tabela2 <- data.frame(rotulos,
+                      Porcentagem[1:36],
+                      Porcentagem[37:72],
+                      Porcentagem[73:108])
 
+
+#nas <- c(sum(resultado1$Na), 
+#         sum(resultado3$Na), 
+#         sum(resultado5$Na), 
+#         sum(resultado7$Na), 
+#         sum(resultado15$Na), 
+#         sum(resultado30$Na))
 
 #########   Analise 2 - estações do ano ############
 
