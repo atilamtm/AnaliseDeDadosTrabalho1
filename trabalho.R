@@ -125,7 +125,32 @@ cepagri <- cepagri[!(consecutive(cepagri$Temperatura, 144) &
 
 #########   Analise 1 - previsão do tempo simplista ############
 
+# Esta função irá determinar os valores de Temperatura, Umidade, 
+# Velocidade do Vento e Sensação Térmica mínimos e máximos para cada dia
+# a partir do valores dessas grandezas de um número arbitrário de dias
+# anteriores. dfMin e dfMax devem ter o mesmo tamanho
+# Parametros: dfMin: Um dataframe contendo as colunas
+#                    Data - no formato "YYYY-mm-dd"
+#                    Temperatura, Umidade, Vento, Sensação Térmica
+#                      Contendo os valores mínimos registrados para
+#                      estas grandezas do respectivo dia.
+#             dfMax: Um dataframe contendo as colunas
+#                    Data - no formato "YYYY-mm-dd"
+#                    Temperatura, Umidade, Vento, Sensação Térmica
+#                      Contendo os valores máximos registrados para
+#                      estas grandezas do respectivo dia.
+#             ndias: número de dias anteriores que se deseja considerar
+#                    ao buscar as grandezas mínimas e máximas prévias a cada dia
+# Retorno: Um dataframe contendo as colunas
+#          Data - no formato "YYYY-mm-dd" 
+#          minNTemp, maxNTemp, minNUnid, maxNUmid, minNVent, maxNVent,
+#          minNSens, maxNSens que indicam, para cada Data, os valores
+#          minimos e máximos para as grandezas encontrados nos "ndias"
+#          anteriores à cada Data.
 calculaIntervaloMinMax <- function(dfMax, dfMin, ndias) {
+  # dfaux será o data frame retornado pela função. Todos os valores são 
+  # inicializados com NA, e aquelas datas que possuem dados suficientes
+  # serão populadas com os valores corretos.
   dfaux <- data.frame(Data = dfMax$Data, 
                       minNTemp = rep(NA,length(dfMin$Data)),
                       maxNTemp = rep(NA,length(dfMax$Data)), 
@@ -137,12 +162,26 @@ calculaIntervaloMinMax <- function(dfMax, dfMin, ndias) {
                       maxNSens = rep(NA,length(dfMax$Data)), 
                       stringsAsFactors = FALSE)
   
-  for (i in (ndias+1):length(dfMax$Data)) {
-    dataNDiaAnterior <- as.Date(dfMax[i,]$Data) - ndias
+  # Este laço percorre todas as posições dos data frames de entrada
+  # e calcula os valores das grandezas máximas e mínimas para cada dia.
+  # Começa em "2" pois o primeiro dia nunca terá nenhum dia anterior a ele.
+  for (i in (2):length(dfMax$Data)) {
+    # Calcula o "ndias" anterior ao registro atual sendo analisado,
+    # utiliza o max() com o segundo parametro sendo a data do primeiro registro
+    # para não tentar olhar registros inexistentes.
+    dataNDiaAnterior <- max(as.Date(dfMax[i,]$Data) - ndias, as.Date(dfMax[1,]$Data))
+    # Calcula a data imediatamente anterior ao registro atual.
     ontem <- as.Date(dfMax[i,]$Data) - 1
+    
+    # Cria dois data frames auxiliares, contendo as mesmas colunas dos data
+    # frames dfMin e dfMax de entrada, porém apenas as linhas correspondentes 
+    # às datas compreendidas entre "dataNDiaAnterior" e "ontem"
     nUltimosDiasMax <- dfMax[(dfMax$Data >= dataNDiaAnterior & dfMax$Data <= ontem),]
     nUltimosDiasMin <- dfMin[(dfMin$Data >= dataNDiaAnterior & dfMin$Data <= ontem),]
+    
+    # Garante que há registro de pelo menos 1 dia no intervalo procurado
     if (length(nUltimosDiasMax$Temperatura) > 0) {
+      # Popula os campos da Data atual no data frame de saída
       dfaux[i,]$minNTemp <- min(nUltimosDiasMin$Temperatura)
       dfaux[i,]$maxNTemp <- max(nUltimosDiasMax$Temperatura)
       dfaux[i,]$minNUmid <- min(nUltimosDiasMin$Umidade)
@@ -156,7 +195,32 @@ calculaIntervaloMinMax <- function(dfMax, dfMin, ndias) {
   return(dfaux)
 }
 
-compara2 <- function(dfMin,dfMax, previsao) {
+# Esta função irá determinar se os registros de temperatura, umidade, 
+# velocidade do vento e sensação térmica de cada dia estão dentro de 
+# um determinado intervalo.
+# Parametros: dfMin: Um dataframe contendo as colunas
+#                    Data - no formato "YYYY-mm-dd"
+#                    Temperatura, Umidade, Vento, Sensação Térmica
+#                      Contendo os valores mínimos registrados para
+#                      estas grandezas do respectivo dia.
+#             dfMax: Um dataframe contendo as colunas
+#                    Data - no formato "YYYY-mm-dd"
+#                    Temperatura, Umidade, Vento, Sensação Térmica
+#                      Contendo os valores máximos registrados para
+#                      estas grandezas do respectivo dia.
+#                     Temperatura, Umidade, Vento, Sensação Térmica com os valores
+#                     máximos de cada grandeza
+#             previsao: data frame contendo as os dados para serem avaliados contra
+#                       os valores de dfMin e dfMax
+# Retorno: Um data frame com as seguintes colunas:
+#          Data - no format "YYYY-mm-dd"
+#          Na - que indica que não valores de mínimo e máximo para aquele dia
+#          tempAcerto, tempErro, umidAcerto, umidErro, ventAcerto, ventErro, sensAcerto
+#          sensErro - que indicam se os valores para mínimo e máximo dessas grandezas
+#          na data observada (dfMin e dfMax) estão dentro dos mínimos e máximos previstos 
+#          em "previsao"
+verificaPrevisao <- function(dfMin,dfMax, previsao) {
+  # data frame que será retornado
   result <- data.frame(Data = dfMin$Data, 
                        Na = rep(FALSE,length(dfMin$Data)),
                        tempAcerto = rep(FALSE,length(dfMin$Data)),
@@ -167,11 +231,16 @@ compara2 <- function(dfMin,dfMax, previsao) {
                        ventErro = rep(FALSE,length(dfMin$Data)),
                        sensAcerto = rep(FALSE,length(dfMin$Data)),
                        sensErro = rep(FALSE,length(dfMin$Data)))
-  
+  # Laço que percorre os data frames de entrada comparando os valores observados
+  # em cada dia (dfMin e dfMax) com as previsões realizadas em "previsao"
   for(i in 1:length(dfMin$Data)) {
+    # Nos data frames deste trabalho, sempre que o valor de uma medição está
+    # com NA, todos os valores das medições estão com NA.
     if (is.na(previsao[i,]$maxNTemp)) {
       result[i,]$Na <- TRUE
     } else {
+      # Verifica se cada valor observado (dfMin e dfMax) está dentro dos limites
+      # do indicado pela previsao (previsao)
       if (dfMax[i,]$Temperatura <= previsao[i,]$maxNTemp & 
           dfMin[i,]$Temperatura >= previsao[i,]$minNTemp) {
         result[i,]$tempAcerto <- TRUE
@@ -204,27 +273,35 @@ compara2 <- function(dfMin,dfMax, previsao) {
 # Calcular as medições máxima e mínima diárias
 maxPorDia <- aggregate(cepagri[,2:5],list(format(cepagri$Horario, "%Y-%m-%d")), max)
 minPorDia <- aggregate(cepagri[,2:5],list(format(cepagri$Horario, "%Y-%m-%d")), min)
+# Nomear as colunas dos data frames que contem as medições mínimas e máximas diárias
 colnames(maxPorDia) <- c("Data", "Temperatura", "Vento", "Umidade", "Sensacao")
 colnames(minPorDia) <- c("Data", "Temperatura", "Vento", "Umidade", "Sensacao")
 
+# Usa a função calculaIntervaloMinMax para determinar, para cada dia, qual as medições
+# mínima e máxima observadas considerando diversos números de dias anteriores à cada 
+# medição: 1 dia, 3 dias, 5 dias, 7 dias, 15 dias, 30 dias.
 df1 <- calculaIntervaloMinMax(dfMax = maxPorDia, dfMin = minPorDia, ndias = 1)
 df3 <- calculaIntervaloMinMax(dfMax = maxPorDia, dfMin = minPorDia, ndias = 3)
 df5 <- calculaIntervaloMinMax(dfMax = maxPorDia, dfMin = minPorDia, ndias = 5)
 df7 <- calculaIntervaloMinMax(dfMax = maxPorDia, dfMin = minPorDia, ndias = 7)
-df14 <- calculaIntervaloMinMax(dfMax = maxPorDia, dfMin = minPorDia, ndias = 14)
 df15 <- calculaIntervaloMinMax(dfMax = maxPorDia, dfMin = minPorDia, ndias = 15)
 df30 <- calculaIntervaloMinMax(dfMax = maxPorDia, dfMin = minPorDia, ndias = 30)
 
-resultado1 <- compara2(dfMin = minPorDia, dfMax = maxPorDia, previsao = df1)
-resultado3 <- compara2(dfMin = minPorDia, dfMax = maxPorDia, previsao = df3)
-resultado5 <- compara2(dfMin = minPorDia, dfMax = maxPorDia, previsao = df5)
-resultado7 <- compara2(dfMin = minPorDia, dfMax = maxPorDia, previsao = df7)
-resultado14 <- compara2(dfMin = minPorDia, dfMax = maxPorDia, previsao = df14)
-resultado15 <- compara2(dfMin = minPorDia, dfMax = maxPorDia, previsao = df15)
-resultado30 <- compara2(dfMin = minPorDia, dfMax = maxPorDia, previsao = df30)
+# Usa a função verificaPrevisao para determinar, em cada dia, se as medições realizadas
+# ficam dentro de um intervalo determinado (calculado em df1..df30)
+resultado1 <- verificaPrevisao(dfMin = minPorDia, dfMax = maxPorDia, previsao = df1)
+resultado3 <- verificaPrevisao(dfMin = minPorDia, dfMax = maxPorDia, previsao = df3)
+resultado5 <- verificaPrevisao(dfMin = minPorDia, dfMax = maxPorDia, previsao = df5)
+resultado7 <- verificaPrevisao(dfMin = minPorDia, dfMax = maxPorDia, previsao = df7)
+resultado15 <- verificaPrevisao(dfMin = minPorDia, dfMax = maxPorDia, previsao = df15)
+resultado30 <- verificaPrevisao(dfMin = minPorDia, dfMax = maxPorDia, previsao = df30)
 
-# Cada linha da tabela representa a quantidade de Acertos, Erros e NAs em cada tipo de previsão
-# A previsões são: 1 dias, 3 dias, 5 dias, 1 semana, 15 dias, 1 mes
+# Vetor com o total de acertos para cada tipo de medida, em cada tipo de previsão.
+# Acertos da medida do dia atual utilizando os máximos e mínimos de 1 dia anterior,
+# 3 dias anteriores, 5 dias anteriores, 7 dias anteriores, 15 dias anteriores, 30 
+# dias anteriores. Além disso tambem contém os acertos de previsões para os mesmos períodos
+# levando em conta todas as medidas simultaneamente, e também levando em conta um acerto
+# em qualquer uma das medidas
 Acertos <- c(sum(resultado1$tempAcerto), 
              sum(resultado3$tempAcerto), 
              sum(resultado5$tempAcerto), 
@@ -237,18 +314,6 @@ Acertos <- c(sum(resultado1$tempAcerto),
              sum(resultado7$umidAcerto), 
              sum(resultado15$umidAcerto), 
              sum(resultado30$umidAcerto),
-             sum(resultado1$ventAcerto), 
-             sum(resultado3$ventAcerto), 
-             sum(resultado5$ventAcerto), 
-             sum(resultado7$ventAcerto), 
-             sum(resultado15$ventAcerto), 
-             sum(resultado30$ventAcerto),
-             sum(resultado1$sensAcerto), 
-             sum(resultado3$sensAcerto), 
-             sum(resultado5$sensAcerto), 
-             sum(resultado7$sensAcerto), 
-             sum(resultado15$sensAcerto), 
-             sum(resultado30$sensAcerto),
              sum(resultado1$tempAcerto & resultado1$umidAcerto & resultado1$ventAcerto & resultado1$sensAcerto),
              sum(resultado3$tempAcerto & resultado3$umidAcerto & resultado3$ventAcerto & resultado3$sensAcerto),
              sum(resultado5$tempAcerto & resultado5$umidAcerto & resultado5$ventAcerto & resultado5$sensAcerto),
@@ -262,6 +327,12 @@ Acertos <- c(sum(resultado1$tempAcerto),
              sum(resultado15$tempAcerto | resultado15$umidAcerto | resultado15$ventAcerto | resultado15$sensAcerto),
              sum(resultado30$tempAcerto | resultado30$umidAcerto | resultado30$ventAcerto | resultado30$sensAcerto))
 
+# Vetor com o total de erros para cada tipo de medida, em cada tipo de previsão.
+# Erros da medida do dia atual utilizando os máximos e mínimos de 1 dia anterior,
+# 3 dias anteriores, 5 dias anteriores, 7 dias anteriores, 15 dias anteriores, 30 
+# dias anteriores. Além disso tambem contém os erros de previsões para os mesmos períodos
+# levando em conta qualquer uma das medidas, e também levando em conta erros em todas
+# as medidas simultaneamente
 Erros <- c(sum(resultado1$tempErro), 
            sum(resultado3$tempErro), 
            sum(resultado5$tempErro), 
@@ -274,18 +345,6 @@ Erros <- c(sum(resultado1$tempErro),
            sum(resultado7$umidErro), 
            sum(resultado15$umidErro), 
            sum(resultado30$umidErro),
-           sum(resultado1$ventErro), 
-           sum(resultado3$ventErro), 
-           sum(resultado5$ventErro), 
-           sum(resultado7$ventErro), 
-           sum(resultado15$ventErro), 
-           sum(resultado30$ventErro),
-           sum(resultado1$sensErro), 
-           sum(resultado3$sensErro), 
-           sum(resultado5$sensErro), 
-           sum(resultado7$sensErro), 
-           sum(resultado15$sensErro), 
-           sum(resultado30$sensErro),
            sum(resultado1$tempErro | resultado1$umidErro | resultado1$ventErro | resultado1$sensErro),
            sum(resultado3$tempErro | resultado3$umidErro | resultado3$ventErro | resultado3$sensErro),
            sum(resultado5$tempErro | resultado5$umidErro | resultado5$ventErro | resultado5$sensErro),
@@ -299,14 +358,20 @@ Erros <- c(sum(resultado1$tempErro),
            sum(resultado15$tempErro & resultado15$umidErro & resultado15$ventErro & resultado15$sensErro),
            sum(resultado30$tempErro & resultado30$umidErro & resultado30$ventErro & resultado30$sensErro))
 
+# Vetor com os valores das quatindades de NA em cada tipo de previsao, 1, 3, 5, 7, 15
+# e 30 dias. Os valores de NA se repetem em todas as medidas para os mesmos periodos,
+# então podemos simplesmente repetir os valores tantas vezes quantas são as análises
+# nos vetores de Erro e Acerto
 Na <- rep(c(sum(resultado1$Na), 
            sum(resultado3$Na), 
            sum(resultado5$Na), 
            sum(resultado7$Na), 
            sum(resultado15$Na), 
            sum(resultado30$Na)),
-           6)
+           4)
 
+# Nome que indica qual o significado do valor de cada linha dos vetores 
+# Erro, Acerto e Na
 rotulos <- factor(c("Temperatura 1 dia", 
                   "Temperatura 3 dias", 
                   "Temperatura 5 dias", 
@@ -319,18 +384,6 @@ rotulos <- factor(c("Temperatura 1 dia",
                   "Umidade 7 dias", 
                   "Umidade 15 dias", 
                   "Umidade 30 dias",
-                  "Vento 1 dia", 
-                  "Vento 3 dias", 
-                  "Vento 5 dias", 
-                  "Vento 7 dias", 
-                  "Vento 15 dias", 
-                  "Vento 30 dias",
-                  "Sensacao 1 dia", 
-                  "Sensacao 3 dias", 
-                  "Sensacao 5 dias", 
-                  "Sensacao 7 dias", 
-                  "Sensacao 15 dias", 
-                  "Sensacao 30 dias",
                   "Todas Medidas 1 dia",
                   "Todas Medidas 3 dias",
                   "Todas Medidas 5 dias",
@@ -355,18 +408,6 @@ rotulos <- factor(c("Temperatura 1 dia",
                             "Umidade 7 dias", 
                             "Umidade 15 dias", 
                             "Umidade 30 dias",
-                            "Vento 1 dia", 
-                            "Vento 3 dias", 
-                            "Vento 5 dias", 
-                            "Vento 7 dias", 
-                            "Vento 15 dias", 
-                            "Vento 30 dias",
-                            "Sensacao 1 dia", 
-                            "Sensacao 3 dias", 
-                            "Sensacao 5 dias", 
-                            "Sensacao 7 dias", 
-                            "Sensacao 15 dias", 
-                            "Sensacao 30 dias",
                             "Todas Medidas 1 dia",
                             "Todas Medidas 3 dias",
                             "Todas Medidas 5 dias",
@@ -381,35 +422,39 @@ rotulos <- factor(c("Temperatura 1 dia",
                             "Ao Menos uma med. 30 dias"),
                   ordered = TRUE)
 
+# Repete os rotulos 3 vezes, uma vez para referenciar os valores de Acertos, uma para
+# referenciar os valores de Erro, e outra para os valores de NA
 Previsoes = rep(rotulos,3)
-Resposta <- factor(c(rep("Acerto",36),rep("Erro",36),rep("NA",36)), 
+# Vetor que indica se cada medida se refere a um Acerto, Erro ou NA
+Resposta <- factor(c(rep("Acerto",length(rotulos)),rep("Erro",length(rotulos)),rep("NA",length(rotulos))), 
                    levels = c("NA", "Erro", "Acerto"), ordered = TRUE)
+# Vetor com os valores propriamente ditos de Acerto, Erro e NA
 Frequencia <- c(Acertos,Erros,Na)
 
-
-tabela <- data.frame(Previsoes,Resposta,Frequencia)
-g <- ggplot(tabela,aes(x=Previsoes,y=Frequencia,fill=Resposta))
+# Data frame com os dados da quantidade de Acertos, Erros, NAs para cada tipo de previsao
+# e em cada tipo de medida: Temperatura, Umidade, 
+# também todas as medidas simultaneamente, e ao menos uma das medidas.
+dfPrevisao <- data.frame(Previsoes,Resposta,Frequencia)
+g <- ggplot(dfPrevisao,aes(x=Previsoes,y=Frequencia,fill=Resposta))
 g <- g+ geom_bar(stat="identity")
 g <- g + theme(axis.text.x = element_text(angle = 90, hjust = 1))
 g
 
-
+# Encontra a quantidade total de previsoes para cada medida (são todas iguais)
 Total <- Acertos[1] + Erros[1] + Na[1]
+# Converte cada resultado de Acerto, Erro e Na para porcentagem, mantendo 2 casas decimais
 Porcentagem <- c(Acertos/Total,Erros/Total,Na/Total)
 Porcentagem <- trunc(Porcentagem * 10000)
 Porcentagem <- Porcentagem / 100
-tabela2 <- data.frame(rotulos,
-                      Porcentagem[1:36],
-                      Porcentagem[37:72],
-                      Porcentagem[73:108])
+
+# Tabela com as pocentagens de cada tipo de previsao e seu respectivo resultado.
+tabelaPorcentagem <- data.frame("Tipos de previsao" = rotulos,
+                      Acertos = Porcentagem[1:(length(Porcentagem)/3)],
+                      Erros = Porcentagem[((length(Porcentagem)/3)+1):(2*(length(Porcentagem)/3))],
+                      NAs = Porcentagem[((2*(length(Porcentagem)/3))+1):length(Porcentagem)])
+tabelaPorcentagem
 
 
-#nas <- c(sum(resultado1$Na), 
-#         sum(resultado3$Na), 
-#         sum(resultado5$Na), 
-#         sum(resultado7$Na), 
-#         sum(resultado15$Na), 
-#         sum(resultado30$Na))
 
 #########   Analise 2 - estações do ano ############
 
@@ -496,7 +541,9 @@ gTemperatura <- gTemperatura + geom_line(aes(y = Temperatura))
 gTemperatura <- gTemperatura + geom_smooth(aes(y = Temperatura))
 # Pede a separação do gráfico em imagens distintas, sendo uma para cada estação, alem disso
 # indica que as imagens devem estar concentradas em uma única linha.
-gTemperatura <- gTemperatura + facet_wrap(~ Estacao, nrow=1)
+gTemperatura <- gTemperatura + facet_wrap(~ Estacao, nrow = 1)
+gTemperatura <- gTemperatura + xlab("Dia da estacao")
+gTemperatura <- gTemperatura + ylab("Media da Temperatura por 3 Anos")
 # Exibe o gráfico
 gTemperatura
 
@@ -516,7 +563,9 @@ gUmidade <- gUmidade + geom_line(aes(y = Umidade))
 gUmidade <- gUmidade + geom_smooth(aes(y = Umidade))
 # Pede a separação do gráfico em imagens distintas, sendo uma para cada estação, alem disso
 # indica que as imagens devem estar concentradas em uma unica linha.
-gUmidade <- gUmidade + facet_wrap(~ Estacao, nrow=1)
+gUmidade <- gUmidade + facet_wrap(~ Estacao, nrow = 1)
+gUmidade <- gUmidade + xlab("Dia da estacao")
+gUmidade <- gUmidade + ylab("Media da Umidade por 3 Anos")
 # Exibe o gráfico
 gUmidade
 
@@ -536,7 +585,9 @@ gVento <- gVento + geom_line(aes(y = Vento))
 gVento <- gVento + geom_smooth(aes(y = Vento))
 # Pede a separação do gráfico em imagens distintas, sendo uma para cada estação, alem disso
 # indica que as imagens devem estar concentradas em uma unica linha.
-gVento <- gVento + facet_wrap(~ Estacao, nrow=1)
+gVento <- gVento + facet_wrap(~ Estacao, nrow = 1)
+gVento <- gVento + xlab("Dia da estacao")
+gVento <- gVento + ylab("Media da Velocidade do Vento por 3 Anos")
 # Exibe o gráfico
 gVento
 
@@ -556,7 +607,9 @@ gSensacao <- gSensacao + geom_line(aes(y = Sensacao))
 gSensacao <- gSensacao + geom_smooth(aes(y = Sensacao))
 # Pede a separação do gráfico em imagens distintas, sendo uma para cada estação, alem disso
 # indica que as imagens devem estar concentradas em uma unica linha.
-gSensacao <- gSensacao + facet_wrap(~ Estacao, nrow=1)
+gSensacao <- gSensacao + facet_wrap(~ Estacao, nrow = 1)
+gSensacao <- gSensacao + xlab("Dia da estacao")
+gSensacao <- gSensacao + ylab("Media da Sensacao Termica por 3 Anos")
 # Exibe o gráfico
 gSensacao
 
