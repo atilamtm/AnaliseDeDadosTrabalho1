@@ -14,9 +14,23 @@ names <- c("Horario", "Temperatura", "Vento", "Umidade", "Sensacao")
 
 # Ir?? ler a tabela e preencher os campos faltando
 cepagri <- read.table(con , header = FALSE , fill = TRUE, sep = ";", col.names = names, 
-                      #colClasses = c("character","character","numeric","numeric","numeric"),
+                      colClasses = c("character","character","numeric","numeric","numeric"),
                       stringsAsFactors=FALSE)
-# 210475 amostras no conjunto de dados original
+# 210736 amostras no conjunto de dados original em 30/03/2018 16:26
+
+# Cria o dataframe que ira guardar o número total de amostras inicias, NAs, outiliers e dados repetidos
+dfAnaliseErros <-data.frame(dataType = c("Inicial",  "Com valor NA", "Com valor outliers", "Com um travamento do sensor"), 
+                            number = rep(x=NA, times=4))
+
+# Converte a string com horarios para POSIXlt
+cepagri$Horario <- strptime (cepagri$Horario, "%d/%m/%Y-%H:%M")
+
+# Escolhe apenas as amostras entre o periodo desejado: 01/01/2015-31/12/2017
+periodo <- cepagri$Horario >= "2015-01-01" & cepagri$Horario < "2018-01-01"
+cepagri <- cepagri[periodo, ]
+
+# Adiciona o número de dados do perído, inclusive, com erros
+dfAnaliseErros$number[1] = length(cepagri$Horario)
 
 # Converte a coluna 2 para numeric, onde tiver a string "ERRO", ira'transformar pra NA
 cepagri [ , 2] <- as.numeric(cepagri [ ,2])
@@ -25,24 +39,28 @@ cepagri [ , 2] <- as.numeric(cepagri [ ,2])
 for(i in 1:5) {
   cepagri <- cepagri [!is.na(cepagri[ , i]), ]
 }
-# 208320 amostras sobraram - 2155 amostras removidas
+# 154257 amostras sobraram - 1801 amostras removidas do periodo
 
-# Converte a string com horarios para POSIXlt
-cepagri$Horario <- strptime (cepagri$Horario, "%d/%m/%Y-%H:%M")
+# Atualiza os valores do número de erros relacionados a NAs
+dfAnaliseErros$number[2] = dfAnaliseErros$number[1] - length(cepagri$Horario)
 
-# Escolhe apneas as amostras entre o periodo desejado: 01/01/2015-31/12/2017
-periodo <- cepagri$Horario >= "2015-01-01" & cepagri$Horario < "2018-01-01"
-cepagri <- cepagri[periodo, ]
 # 154257 amostras dentro do periodo desejado de 3 anos
 # 3 anos * 365 dias + 1 dia de ano bissexto 2016 * 24 horas * 6 coletas por hora = 157824 amostras
+
+# Summary irá evidenciar erros de outiliers, principalmente nos valores máximo e mínimo
+summary(cepagri)
 
 # Remove os outliers - 137 valores de Sensacao = 99.90, total de amostra = 154120
 cepagri <- cepagri[cepagri$Sensacao != 99.90,]
 
+# Agora a temperatura máxima está com factível (37.40 Celsius)
 summary(cepagri)
 
-# Função que dado um vetor e um inteiro k verifica se cada posição do vetor é igual às k posições
-# anteriores ou posteriores
+# Atualiza os valores do número de erros relacionados aos outiliers
+dfAnaliseErros$number[3] = dfAnaliseErros$number[1] - dfAnaliseErros$number[2] - length(cepagri$Horario)
+
+# Função vista em sala de aula, que dado um vetor e um inteiro k verifica se cada posição do vetor é 
+# igual às k posições anteriores ou posteriores
 consecutive <- function (vector , k = 1) {
   n <- length ( vector )
   result <- logical (n)
@@ -55,10 +73,9 @@ consecutive <- function (vector , k = 1) {
   return ( result )
 }
 
-# Numero de dados relacionadas a 1h, 2h, 4h, 6h, 12h, 24h, 36h e 48h
-nTimes = c(6, 12, 24, 36, 72, 144, 216, 288);
+# Numero de repetições relacionadas a 10min, 20 min, 1h, 2h, 4h, 6h, 12h, 24h, 36h e 48h
+nTimes = c(1, 2, 6, 12, 24, 36, 72, 144, 216, 288);
 vRepeatedValues = rep(x=0, times=length(nTimes))
-vFailDate = list();
 for(i in 1:length(nTimes)) {
   repeated = 
     consecutive(cepagri$Temperatura, nTimes[i]) & 
@@ -67,14 +84,34 @@ for(i in 1:length(nTimes)) {
     consecutive(cepagri$Sensacao, nTimes[i])
   
   vRepeatedValues[i] = sum (repeated)
-  vFailDate <- c(vFailDate, repeated)
 }
 
-dfRepeticoes <-data.frame(vRepeatedValues=vRepeatedValues, nHoras=nTimes/6, porcentagem=(vRepeatedValues/length(cepagri$Horario)) * 100)
-names(dfRepeticoes) <- c("Número de repetições consecutivas", "Periodo de tempo (Horas)", "Porcetagem")
+dfRepeticoes <-data.frame(vRepeatedValues=vRepeatedValues, nHoras=round(nTimes/6,2), porcentagem=round((vRepeatedValues/length(cepagri$Horario)) * 100,2))
+names(dfRepeticoes) <- c("Número de repetições consecutivas", "Periodo de tempo (Horas)", "Porcetagem nos dados")
 
 dfRepeticoes
 # Não houveram falhas que perduraram 48hs
+# Devida a natureza do problema é altamente improvavel que os 4 variáveis físicas fiquem constantes 
+# por mais de uma amostra consecutiva. Devido ao seu pouco impacto no conjuntos de dados pode-se 
+# remover esses dados, o que seria equivalente a 6.54% das amostras válidas
+
+cepagri <- cepagri[!(consecutive(cepagri$Temperatura, 1) &
+                       consecutive(cepagri$Vento, 1) &
+                       consecutive(cepagri$Umidade, 1) &
+                       consecutive(cepagri$Sensacao, 1)),]
+
+
+# Atualiza os valores do número de erros relacionados aos outiliers
+dfAnaliseErros$number[4] = dfAnaliseErros$number[1] - dfAnaliseErros$number[2] - dfAnaliseErros$number[3] - length(cepagri$Horario)
+
+pErros <- ggplot (dfAnaliseErros , aes(x = dataType , y = number, fill=number))
+pErros <- pErros + geom_bar(stat = "identity") + xlab("Tipo") + ylab("Quantidade de dados")
+pErros <- pErros + ggtitle("Comparação dos tipos de erros e os dados iniciais") + labs(fill = "Densidade dos dados")
+pErros
+
+
+
+
 
 
 #confirmar se ha horarios duplicados
