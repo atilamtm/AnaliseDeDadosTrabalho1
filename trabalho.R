@@ -89,24 +89,30 @@ for(i in 1:length(nTimes)) {
 dfRepeticoes <-data.frame(vRepeatedValues=vRepeatedValues, nHoras=round(nTimes/6,2), porcentagem=round((vRepeatedValues/length(cepagri$Horario)) * 100,2))
 names(dfRepeticoes) <- c("Número de repetições consecutivas", "Periodo de tempo (Horas)", "Porcetagem nos dados")
 
+
+#Analise 06
 dfRepeticoes
 # Não houveram falhas que perduraram 48hs
 # Devida a natureza do problema é altamente improvavel que os 4 variáveis físicas fiquem constantes 
-# por mais de uma amostra consecutiva. Devido ao seu pouco impacto no conjuntos de dados pode-se 
-# remover esses dados, o que seria equivalente a 6.54% das amostras válidas
+# por mais 1h. Devido ao seu pouco impacto no conjuntos de dados pode-se remover esses dados, 
+# o que seria equivalente a 1.31% das amostras válidas
 
-cepagri <- cepagri[!(consecutive(cepagri$Temperatura, 1) &
-                       consecutive(cepagri$Vento, 1) &
-                       consecutive(cepagri$Umidade, 1) &
-                       consecutive(cepagri$Sensacao, 1)),]
+cepagri <- cepagri[!(consecutive(cepagri$Temperatura, 6) &
+                       consecutive(cepagri$Vento, 6) &
+                       consecutive(cepagri$Umidade, 6) &
+                       consecutive(cepagri$Sensacao, 6)),]
+
 
 
 # Atualiza os valores do número de erros relacionados aos outiliers
 dfAnaliseErros$number[4] = dfAnaliseErros$number[1] - dfAnaliseErros$number[2] - dfAnaliseErros$number[3] - length(cepagri$Horario)
 
-pErros <- ggplot (dfAnaliseErros , aes(x = dataType , y = number, fill=number))
-pErros <- pErros + geom_bar(stat = "identity") + xlab("Tipo") + ylab("Quantidade de dados")
-pErros <- pErros + ggtitle("Comparação dos tipos de erros e os dados iniciais") + labs(fill = "Densidade dos dados")
+
+#Analise 5
+# Gráfico que mostra quantitivamente os tipos de erros removidos comparando com a quantidade inicial de dados
+pErros <- ggplot (dfAnaliseErros , aes(x = dataType , y = number))
+pErros <- pErros + geom_bar(stat = "identity", fill = "#66FFFB") + xlab("Tipo") + ylab("Quantidade de dados")
+pErros <- pErros + ggtitle("Comparação dos tipos de erros e os dados iniciais")
 pErros
 
 
@@ -115,12 +121,11 @@ pErros
 
 
 #confirmar se ha horarios duplicados
-# Remover as amostras que se repetem em 24 horas 
-########## REVER ESTE PERIODO ############
-cepagri <- cepagri[!(consecutive(cepagri$Temperatura, 144) &
-                       consecutive(cepagri$Vento, 144) &
-                       consecutive(cepagri$Umidade, 144) &
-                       consecutive(cepagri$Sensacao, 144)),]
+
+
+
+
+
 
 
 #########   Analise 1 - previsão do tempo simplista ############
@@ -613,3 +618,30 @@ gSensacao <- gSensacao + ylab("Media da Sensacao Termica por 3 Anos")
 # Exibe o gráfico
 gSensacao
 
+
+
+
+
+# Análise 3
+cepagriQualidade <- data.frame(Umidade=cepagri$Umidade, Horario=cepagri$Horario, Ano=cepagri$Horario$year+1900)
+
+gQualidade <- ggplot (cepagriQualidade, aes(x = Horario, y = Umidade, group = Ano))
+gQualidade <- gQualidade + geom_hline(yintercept = 30, color="yellow") + 
+  geom_hline (yintercept = 20, color="brown") + geom_hline(yintercept = 12, color="red") + geom_line()
+gQualidade <- gQualidade + facet_wrap(~ Ano, scales = "free_x")
+gQualidade
+
+
+# Análise 4
+
+#http://www.dummies.com/education/math/statistics/how-to-interpret-a-correlation-coefficient-r/
+
+# Gráfico de correlação entre temperatura e sensação térmica
+correlacao = rep(x=NA, times=3)
+correlacao[1] = cor(cepagri$Sensacao, cepagri$Temperatura)
+correlacao[2] = cor(cepagri$Sensacao, cepagri$Umidade)
+correlacao[3] = cor(cepagri$Sensacao, cepagri$Vento)
+dfCorrelacaoSensacaoTermica = data.frame(correlacao = correlacao)
+names(dfCorrelacaoSensacaoTermica) <- "Valor da correlação com a sensação térmica"
+row.names(dfCorrelacaoSensacaoTermica) <- c("Temperatura", "Umidade",  "Vento")
+dfCorrelacaoSensacaoTermica
