@@ -467,6 +467,7 @@ g3 <- g3 + geom_line(aes(y = TempMin, color = "Real", group=1))
 g3 <- g3 + geom_line(aes(y = TempMax, color = "Real", group=2))
 g3 <- g3 + geom_line(aes(y = PrevMin3, color = "Previsao com 3 dias", group=1))
 g3 <- g3 + geom_line(aes(y = PrevMax3, color = "Previsao com 3 dias", group=2))
+g3 <- g3 + labs(colour = "Legenda")
 g3 <- g3 + ylab("Temperatura") + xlab("2016")
 g3 <- g3 + theme(axis.text.x=element_blank(),
                  axis.ticks.x=element_blank())
@@ -480,6 +481,7 @@ g30 <- g30 + geom_line(aes(y = TempMin, color = "Real", group=1))
 g30 <- g30 + geom_line(aes(y = TempMax, color = "Real", group=2))
 g30 <- g30 + geom_line(aes(y = PrevMin30, color = "Previsao com 30 dias", group=3))
 g30 <- g30 + geom_line(aes(y = PrevMax30, color = "Previsao com 30 dias", group=4))
+g30 <- g30 + labs(colour = "Legenda")
 g30 <- g30 + ylab("Temperatura") + xlab("2016")
 g30 <- g30 + theme(axis.text.x=element_blank(),
                  axis.ticks.x=element_blank())
@@ -647,6 +649,7 @@ gSensacao
 
 
 #########   Analise 4 - Qualidade do ar em Campinas em termos da umidade relativa ############
+
 # Cria-se um data frame auxiliar para que possa facilitar a seleção dos dados
 cepagriQualidade <- data.frame(Umidade=cepagri$Umidade, Horario=cepagri$Horario, Ano=cepagri$Horario$year+1900)
 # Cria-se um data frame auxiliar para que possa facilitar a seleção dos dados
