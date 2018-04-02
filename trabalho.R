@@ -18,6 +18,9 @@ cepagri <- read.table(con , header = FALSE , fill = TRUE, sep = ";", col.names =
                       stringsAsFactors=FALSE)
 # 210736 amostras no conjunto de dados original em 30/03/2018 16:26
 
+
+#########   Analise 1 - Distribuição de erros nos dados ############
+
 # Cria o dataframe que ira guardar o número total de amostras inicias, NAs, outiliers e dados repetidos
 dfAnaliseErros <-data.frame(dataType = c("Inicial",  "Com valor NA", "Com valor outliers", "Com um travamento do sensor"), 
                             number = rep(x=NA, times=4))
@@ -643,14 +646,16 @@ gSensacao
 
 
 
-
-
-# Análise 4
+#########   Analise 4 - Qualidade do ar em Campinas em termos da umidade relativa ############
+# Cria-se um data frame auxiliar para que possa facilitar a seleção dos dados
 cepagriQualidade <- data.frame(Umidade=cepagri$Umidade, Horario=cepagri$Horario, Ano=cepagri$Horario$year+1900)
-
+# Cria-se um data frame auxiliar para que possa facilitar a seleção dos dados
 gQualidade <- ggplot (cepagriQualidade, aes(x = Horario, y = Umidade, group = Ano))
+# As linhas amarela, marrom e vermelha denotam "estado de atenção", "estado de alerta" e 
+# "estado de emergência", respectivamente. 
 gQualidade <- gQualidade + geom_hline(yintercept = 30, color="yellow") + 
   geom_hline (yintercept = 20, color="brown") + geom_hline(yintercept = 12, color="red") + geom_line()
+# Para facilitar a análise, nos graficos, tem-se a mesma escala da umidade
 gQualidade <- gQualidade + facet_wrap(~ Ano, scales = "free_x", nrow = 3)
 gQualidade
 
