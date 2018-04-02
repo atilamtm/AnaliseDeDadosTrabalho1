@@ -90,7 +90,7 @@ dfRepeticoes <-data.frame(vRepeatedValues=vRepeatedValues, nHoras=round(nTimes/6
 names(dfRepeticoes) <- c("Número de repetições consecutivas", "Periodo de tempo (Horas)", "Porcetagem nos dados")
 
 
-#Analise 06
+#Analise 1
 dfRepeticoes
 # Não houveram falhas que perduraram 48hs
 # Devida a natureza do problema é altamente improvavel que os 4 variáveis físicas fiquem constantes 
@@ -108,7 +108,6 @@ cepagri <- cepagri[!(consecutive(cepagri$Temperatura, 6) &
 dfAnaliseErros$number[4] = dfAnaliseErros$number[1] - dfAnaliseErros$number[2] - dfAnaliseErros$number[3] - length(cepagri$Horario)
 
 
-#Analise 5
 # Gráfico que mostra quantitivamente os tipos de erros removidos comparando com a quantidade inicial de dados
 pErros <- ggplot (dfAnaliseErros , aes(x = dataType , y = number))
 pErros <- pErros + geom_bar(stat = "identity", fill = "#66FFFB") + xlab("Tipo") + ylab("Quantidade de dados")
@@ -118,17 +117,7 @@ pErros
 
 
 
-
-
-#confirmar se ha horarios duplicados
-
-
-
-
-
-
-
-#########   Analise 1 - previsão do tempo simplista ############
+#########   Analise 2 - previsão do tempo simplista ############
 
 # Esta função irá determinar os valores de Temperatura, Umidade, 
 # Velocidade do Vento e Sensação Térmica mínimos e máximos para cada dia
@@ -495,7 +484,7 @@ g30
 
 
 
-#########   Analise 2 - estações do ano ############
+#########   Analise 3 - estações do ano ############
 
 # Calcula a média das medições realizadas ao longo dos 3 anos, agrupadas por cada dia de cada mês
 mediaPorDia <- aggregate(cepagri[,2:5],list(format(cepagri$Horario, "%m-%d")), mean)
@@ -656,26 +645,13 @@ gSensacao
 
 
 
-# Análise 3
+# Análise 4
 cepagriQualidade <- data.frame(Umidade=cepagri$Umidade, Horario=cepagri$Horario, Ano=cepagri$Horario$year+1900)
 
 gQualidade <- ggplot (cepagriQualidade, aes(x = Horario, y = Umidade, group = Ano))
 gQualidade <- gQualidade + geom_hline(yintercept = 30, color="yellow") + 
   geom_hline (yintercept = 20, color="brown") + geom_hline(yintercept = 12, color="red") + geom_line()
-gQualidade <- gQualidade + facet_wrap(~ Ano, scales = "free_x")
+gQualidade <- gQualidade + facet_wrap(~ Ano, scales = "free_x", nrow = 3)
 gQualidade
 
 
-# Análise 4
-
-#http://www.dummies.com/education/math/statistics/how-to-interpret-a-correlation-coefficient-r/
-
-# Gráfico de correlação entre temperatura e sensação térmica
-correlacao = rep(x=NA, times=3)
-correlacao[1] = cor(cepagri$Sensacao, cepagri$Temperatura)
-correlacao[2] = cor(cepagri$Sensacao, cepagri$Umidade)
-correlacao[3] = cor(cepagri$Sensacao, cepagri$Vento)
-dfCorrelacaoSensacaoTermica = data.frame(correlacao = correlacao)
-names(dfCorrelacaoSensacaoTermica) <- "Valor da correlação com a sensação térmica"
-row.names(dfCorrelacaoSensacaoTermica) <- c("Temperatura", "Umidade",  "Vento")
-dfCorrelacaoSensacaoTermica
