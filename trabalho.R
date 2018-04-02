@@ -459,6 +459,40 @@ tabelaPorcentagem <- data.frame("Tipos de previsao" = rotulos,
                       NAs = Porcentagem[((2*(length(Porcentagem)/3))+1):length(Porcentagem)])
 tabelaPorcentagem
 
+# ano irá representar o ano extraído da Data de cada amostra realizada
+ano <- strptime(maxPorDia$Data, "%Y-%m-%d")$year + 1900
+# data frame que contem os dados da temperatura prevista para os casos utilizando 3 dias
+# anteriores e 30 dias anteriores, além da tempertura real medida para cada dia
+dfPrevReal <- data.frame(TempMin=minPorDia$Temperatura, TempMax=maxPorDia$Temperatura, 
+                 PrevMin3=df3$minNTemp, PrevMax3 = df3$maxNTemp, 
+                 PrevMin30=df30$minNTemp, PrevMax30 = df30$maxNTemp,
+                 Data=maxPorDia$Data, Ano=ano)
+
+# gráfico que irá mostrar as curvas de temperatura mínima e máxima prevista 
+# utilizando a previsão com 3 dias de antecendia, e a temperatura real observada
+g3 <- ggplot(dfPrevReal[dfPrevReal$Ano == "2016",], aes(x = Data))
+g3 <- g3 + geom_line(aes(y = TempMin, color = "Real", group=1))
+g3 <- g3 + geom_line(aes(y = TempMax, color = "Real", group=2))
+g3 <- g3 + geom_line(aes(y = PrevMin3, color = "Previsao com 3 dias", group=1))
+g3 <- g3 + geom_line(aes(y = PrevMax3, color = "Previsao com 3 dias", group=2))
+g3 <- g3 + ylab("Temperatura") + xlab("2016")
+g3 <- g3 + theme(axis.text.x=element_blank(),
+                 axis.ticks.x=element_blank())
+g3
+
+
+# gráfico que irá mostrar as curvas de temperatura mínima e máxima prevista 
+# utilizando a previsão com 30 dias de antecendia, e a temperatura real observada
+g30 <- ggplot(dfPrevReal[dfPrevReal$Ano == "2016",], aes(x = Data))
+g30 <- g30 + geom_line(aes(y = TempMin, color = "Real", group=1))
+g30 <- g30 + geom_line(aes(y = TempMax, color = "Real", group=2))
+g30 <- g30 + geom_line(aes(y = PrevMin30, color = "Previsao com 30 dias", group=3))
+g30 <- g30 + geom_line(aes(y = PrevMax30, color = "Previsao com 30 dias", group=4))
+g30 <- g30 + ylab("Temperatura") + xlab("2016")
+g30 <- g30 + theme(axis.text.x=element_blank(),
+                 axis.ticks.x=element_blank())
+g30
+
 
 
 #########   Analise 2 - estações do ano ############
