@@ -652,7 +652,8 @@ gSensacao
 
 # Cria-se um data frame auxiliar para que possa facilitar a seleção dos dados
 cepagriQualidade <- data.frame(Umidade=cepagri$Umidade, Horario=cepagri$Horario, Ano=cepagri$Horario$year+1900)
-# Cria-se um data frame auxiliar para que possa facilitar a seleção dos dados
+cepagriQualidade$Horario <- as.POSIXlt(cepagriQualidade$Horario)
+
 gQualidade <- ggplot (cepagriQualidade, aes(x = Horario, y = Umidade, group = Ano))
 # As linhas amarela, marrom e vermelha denotam "estado de atenção", "estado de alerta" e 
 # "estado de emergência", respectivamente. 
@@ -662,4 +663,41 @@ gQualidade <- gQualidade + geom_hline(yintercept = 30, color="yellow") +
 gQualidade <- gQualidade + facet_wrap(~ Ano, scales = "free_x", nrow = 3)
 gQualidade
 
+
+# Adiciona a estacao no dataframe
+adicionaEstacao <- function(cepagriQualidade) {
+  cepagriQualidade$Estacao <- "ERROR"
+  
+  for(i in 1:length(cepagriQualidade$Horario)) {
+    PRIMEIRO_DIA_OUTONO <- paste(as.character(cepagriQualidade$Horario[i]$year+1900), "-03-21", sep = "")
+    PRIMEIRO_DIA_INVERNO <- paste(as.character(cepagriQualidade$Horario[i]$year+1900), "-06-21", sep = "")
+    PRIMEIRO_DIA_PRIMAVERA <- paste(as.character(cepagriQualidade$Horario[i]$year+1900), "-09-22", sep = "")
+    PRIMEIRO_DIA_VERAO <- paste(as.character(cepagriQualidade$Horario[i]$year+1900), "-12-21", sep = "")
+    
+    data = cepagriQualidade$Horario[i]
+    if (data < PRIMEIRO_DIA_OUTONO || data >= PRIMEIRO_DIA_VERAO) {
+      cepagriQualidade$Estacao[i] <- "Verao"
+    } else if (data >= PRIMEIRO_DIA_OUTONO && data < PRIMEIRO_DIA_INVERNO) {
+      cepagriQualidade$Estacao[i] <- "Outono"
+    } else if (data >= PRIMEIRO_DIA_INVERNO && data < PRIMEIRO_DIA_PRIMAVERA) {
+      cepagriQualidade$Estacao[i] <- "Inverno"
+    } else if (data >= PRIMEIRO_DIA_PRIMAVERA && data < PRIMEIRO_DIA_VERAO) {
+      cepagriQualidade$Estacao[i] <- "Primavera"
+    }
+  }
+  return(cepagriQualidade)
+}
+
+# Adiciona as estacoes
+cepagriQualidade <- adicionaEstacao(cepagriQualidade)
+
+# Faz o grafico dos 3 anos subdividos em estacoes
+gQualidadeEstacao <- ggplot (cepagriQualidade, aes(x = Horario, y = Umidade, group=Ano))
+# As linhas amarela, marrom e vermelha denotam "estado de atenção", "estado de alerta" e 
+# "estado de emergência", respectivamente. 
+gQualidadeEstacao <- gQualidadeEstacao + geom_hline(yintercept = 30, color="yellow") + 
+  geom_hline (yintercept = 20, color="brown") + geom_hline(yintercept = 12, color="red") + geom_point()
+# Para facilitar a análise, nos graficos, tem-se a mesma escala da umidade
+gQualidadeEstacao <- gQualidadeEstacao + facet_wrap(~ Estacao, scales = "free_x", nrow = 3)
+gQualidadeEstacao
 
